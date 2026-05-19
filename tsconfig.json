@@ -1,0 +1,45 @@
+{
+    "compilerOptions": {
+        "target": "ES2015",
+        "lib": [
+            // General JS
+            "ESNext",
+
+            // Web interfaces
+            "DOM",
+            "DOM.iterable",
+
+            // Asynchronicity and promises
+            "ES2018.AsyncIterable",
+            "ES2020.Promise"
+        ],
+        "allowJs": true,
+        "checkJs": true,
+        "skipLibCheck": true,
+        "esModuleInterop": true,
+        "allowSyntheticDefaultImports": true,
+        "strict": true,
+        "forceConsistentCasingInFileNames": true,
+        "noFallthroughCasesInSwitch": true,
+        "module": "ES2022",
+        "resolveJsonModule": true,
+        "noEmit": false,
+        "typeRoots": ["./node_modules/@types"],
+        "types": ["node"],
+        "newLine": "lf",
+        "stripInternal": true,
+        "rootDir": "./src",
+        "outDir": "./dist" // Unused: https://stackoverflow.com/a/48798945
+    },
+    "include": ["**/*"],
+    "exclude": [
+        "**/coverage/",
+        "**/licenses/",
+        "**/logs/",
+        "**/node_modules/",
+        "**/secrets/",
+        "**/temp/",
+        "**/tmp/",
+        "**/dist/"
+    ]
+}

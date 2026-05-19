@@ -1,0 +1,31 @@
+{
+    "name": "node-workspace-sync",
+    "version": "1.0.0",
+    "private": true,
+    "license": "MIT",
+    "type": "module",
+    "description": "Makes sure workspace package-lock.json files are synced with the project root lockfile.",
+    "bin": "./src/cli.ts",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/Vessel9817/node-workspace-sync.git"
+    },
+    "homepage": "https://github.com/Vessel9817/node-workspace-sync#readme",
+    "readme": "https://github.com/Vessel9817/node-workspace-sync/blob/main/README.md",
+    "bugs": {
+        "url": "https://github.com/Vessel9817/node-workspace-sync/issues"
+    },
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "start": "tsx ./src/cli.ts",
+        "tsc": "tsc --noEmit"
+    },
+    "dependencies": {
+        "commander": "^14.0.3"
+    },
+    "devDependencies": {
+        "@types/node": "^25.9.0",
+        "tsx": "^4.22.2",
+        "typescript": "^6.0.3"
+    }
+}
