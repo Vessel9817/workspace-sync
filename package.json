@@ -1,5 +1,5 @@
 {
-    "name": "node-workspace-sync",
+    "name": "workspace-sync",
     "version": "1.0.0",
     "private": true,
     "license": "MIT",
@@ -8,12 +8,12 @@
     "bin": "./src/cli.ts",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/Vessel9817/node-workspace-sync.git"
+        "url": "git+https://github.com/Vessel9817/workspace-sync.git"
     },
-    "homepage": "https://github.com/Vessel9817/node-workspace-sync#readme",
-    "readme": "https://github.com/Vessel9817/node-workspace-sync/blob/main/README.md",
+    "homepage": "https://github.com/Vessel9817/workspace-sync#readme",
+    "readme": "https://github.com/Vessel9817/workspace-sync/blob/main/README.md",
     "bugs": {
-        "url": "https://github.com/Vessel9817/node-workspace-sync/issues"
+        "url": "https://github.com/Vessel9817/workspace-sync/issues"
     },
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1",
