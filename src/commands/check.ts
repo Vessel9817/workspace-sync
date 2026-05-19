@@ -2,24 +2,15 @@ import { program } from 'commander';
 import assert from 'node:assert';
 import fs, { type PathLike } from 'node:fs';
 
-program
-    .command('check')
-    .description('Check workspace lockfile sync')
-    .argument('<base_lockfile>', 'Path to the project root lockfile')
-    .argument('<workspace_lockfile>', 'Path to the workspace lockfile')
-    .action(async (baseLockfile: string, workspaceLockfile: string) => {
-        assert.ok(baseLockfile,
-            'Missing path to project lockfile');
-        assert.ok(workspaceLockfile,
-            'Missing path to workspace lockfile');
-        await assert.doesNotReject(check(baseLockfile, workspaceLockfile));
-    });
-
 export interface Package {
     version: string;
 }
 
 export const SUPPORTED_LOCKFILE_VERSIONS = new Set([3]);
+/**
+ * @see {@link https://github.com/SchemaStore/schemastore/blob/0c09eaee518187f3ed6885467cccb67026835394/src/schemas/json/package.json#L381 package.json schema}
+ */
+export const PACKAGE_NAME_REGEX = `(?:(?:@(?:[a-z0-9-*~][a-z0-9-*._~]*)?/[a-z0-9-._~])|[a-z0-9-~])[a-z0-9-._~]*`;
 
 /**
  * Reads the given lockfile as JSON
@@ -58,32 +49,42 @@ export function getPackages(lockfile: unknown): Map<string, Package> {
     const pkgsIn = lockfile.packages as Record<any, unknown>;
     const pkgsOut = new Map<string, Package>();
 
-    for (const name in pkgsIn) {
-        if (name === '') {
+    for (const pkgPath in pkgsIn) {
+        const pkg = pkgsIn[pkgPath];
+
+        if (pkgPath === '') {
             // Package is the workspace
             continue;
         }
 
-        const pkg = pkgsIn[name];
-
-        console.log(name); // TODO TESTING
-
-        assert.ok(typeof name === 'string', 'Invalid lockfile');
+        assert.ok(typeof pkgPath === 'string', 'Invalid lockfile');
         assert.ok(typeof pkg === 'object', 'Invalid lockfile');
         assert.ok(pkg !== null, 'Invalid lockfile');
         assert.ok(!Array.isArray(pkg), 'Invalid lockfile');
 
+        if ('name' in pkg) {
+            // Workspace
+            assert.ok(typeof pkg.name === 'string', 'Invalid lockfile');
+            continue;
+        }
+        if ('link' in pkg && pkg.link === true) {
+            // Local source
+            continue;
+        }
         if (!('version' in pkg)) {
-            // Package is a workspace
+            // Peer dep or optional dep that's not installed
             continue;
         }
 
         assert.ok(typeof pkg.version === 'string', 'Invalid lockfile');
-        assert.ok(!('integrity' in pkg) || typeof pkg.integrity === 'string',
-            'Invalid lockfile');
 
         // Collecting packages
-        pkgsOut.set(name, { version: pkg.version });
+        const pkgNameMatches = new RegExp(`(?<name>${PACKAGE_NAME_REGEX})$`).exec(pkgPath);
+        const pkgName = pkgNameMatches?.groups?.name;
+
+        assert.ok(pkgName != null && pkgName.length > 0, 'Invalid lockfile');
+
+        pkgsOut.set(pkgName, { version: pkg.version });
     }
 
     return pkgsOut;
@@ -100,8 +101,26 @@ export async function check(
         const basePkg = base.get(name);
 
         assert.ok(basePkg != null,
-            `Package removed from base lockfile: ${name}`);
+            `Package missing from base lockfile: ${name}`);
         assert.deepStrictEqual(basePkg, pkg,
-            `Versions differ in package: ${name}`);
+            `Version mismatch in package: ${name}`);
     }
 }
+
+async function checkAction(
+    baseLockfile: string,
+    workspaceLockfile: string
+): Promise<void> {
+    assert.ok(baseLockfile,
+        'Missing path to project lockfile');
+    assert.ok(workspaceLockfile,
+        'Missing path to workspace lockfile');
+    await assert.doesNotReject(check(baseLockfile, workspaceLockfile));
+}
+
+program
+    .command('check')
+    .description('Check workspace lockfile sync')
+    .argument('<base_lockfile>', 'Path to the project root lockfile')
+    .argument('<workspace_lockfile>', 'Path to the workspace lockfile')
+    .action(checkAction);
