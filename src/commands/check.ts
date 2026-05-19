@@ -30,6 +30,11 @@ export async function readLockfile(lockfile: PathLike): Promise<any> {
     }
 }
 
+/**
+ * Given a lockfile, returns data useful for comparing package versions
+ * @param lockfile The lockfile, as JSON
+ * @returns
+ */
 export function getPackages(lockfile: unknown): Map<string, Package> {
     // Validating lockfile properties
     assert.ok(typeof lockfile === 'object', 'Invalid lockfile');
@@ -90,6 +95,11 @@ export function getPackages(lockfile: unknown): Map<string, Package> {
     return pkgsOut;
 }
 
+/**
+ * Checks workspace lockfile sync
+ * @param baseLockfile Path to the project root lockfile
+ * @param workspaceLockfile Path to the workspace lockfile
+ */
 export async function check(
     baseLockfile: PathLike,
     workspaceLockfile: PathLike
@@ -107,6 +117,11 @@ export async function check(
     }
 }
 
+/**
+ * CLI command to check workspace lockfile sync
+ * @param baseLockfile 
+ * @param workspaceLockfile 
+ */
 async function checkAction(
     baseLockfile: string,
     workspaceLockfile: string
