@@ -5,13 +5,13 @@ import fs, { type PathLike } from 'node:fs';
 program
     .command('check')
     .description('Check workspace lockfile sync')
-    .argument('<base_lockfile>', 'Path to the project root package-lock.json')
-    .argument('<workspace_lockfile>', 'Path to the workspace package-lock.json')
+    .argument('<base_lockfile>', 'Path to the project root lockfile')
+    .argument('<workspace_lockfile>', 'Path to the workspace lockfile')
     .action(async (baseLockfile: string, workspaceLockfile: string) => {
         assert.ok(baseLockfile,
-            'Missing path to project package-lock.json');
+            'Missing path to project lockfile');
         assert.ok(workspaceLockfile,
-            'Missing path to workspace package-lock.json');
+            'Missing path to workspace lockfile');
         await assert.doesNotReject(check(baseLockfile, workspaceLockfile));
     });
 
