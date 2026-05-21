@@ -2,10 +2,6 @@ import { program } from 'commander';
 import assert from 'node:assert';
 import fs, { type PathLike } from 'node:fs';
 
-export interface Package {
-    version: string;
-}
-
 export const SUPPORTED_LOCKFILE_VERSIONS = new Set([3]);
 /**
  * @see {@link https://github.com/SchemaStore/schemastore/blob/0c09eaee518187f3ed6885467cccb67026835394/src/schemas/json/package.json#L381 package.json schema}
@@ -35,7 +31,7 @@ export async function readLockfile(lockfile: PathLike): Promise<any> {
  * @param lockfile The lockfile, as JSON
  * @returns
  */
-export function getPackages(lockfile: unknown): Map<string, Package> {
+export function getPackages(lockfile: unknown): Map<string, Set<string>> {
     // Validating lockfile properties
     assert.ok(typeof lockfile === 'object', 'Invalid lockfile');
     assert.ok(lockfile !== null, 'Invalid lockfile');
@@ -52,7 +48,7 @@ export function getPackages(lockfile: unknown): Map<string, Package> {
 
     // Validating packages
     const pkgsIn = lockfile.packages as Record<any, unknown>;
-    const pkgsOut = new Map<string, Package>();
+    const pkgsOut = new Map<string, Set<string>>();
 
     for (const pkgPath in pkgsIn) {
         const pkg = pkgsIn[pkgPath];
@@ -89,7 +85,12 @@ export function getPackages(lockfile: unknown): Map<string, Package> {
 
         assert.ok(pkgName != null && pkgName.length > 0, 'Invalid lockfile');
 
-        pkgsOut.set(pkgName, { version: pkg.version });
+        if (pkgsOut.has(pkgName)) {
+            pkgsOut.get(pkgName)!.add(pkg.version);
+        }
+        else {
+            pkgsOut.set(pkgName, new Set([pkg.version]));
+        }
     }
 
     return pkgsOut;
@@ -107,13 +108,18 @@ export async function check(
     const files = [baseLockfile, workspaceLockfile];
     const [base, workspace] = (await Promise.all(files.map(readLockfile))).map(getPackages);
 
-    for (const [name, pkg] of workspace) {
-        const basePkg = base.get(name);
+    for (const [name, workspacePkgVers] of workspace) {
+        const basePkgVers = base.get(name);
 
-        assert.ok(basePkg != null,
+        assert.ok(basePkgVers != null,
             `Package missing from base lockfile: ${name}`);
-        assert.deepStrictEqual(basePkg, pkg,
-            `Version mismatch in package: ${name}`);
+        
+        const missingVers = [
+            ...workspacePkgVers.difference(basePkgVers)
+        ];
+
+        assert.ok(missingVers.length < 1,
+            `Version mismatch: ${name}@${missingVers.join('||')}`);
     }
 }
 
