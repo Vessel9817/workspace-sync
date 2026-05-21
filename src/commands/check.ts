@@ -1,6 +1,7 @@
 import { program } from 'commander';
 import assert from 'node:assert';
 import fs, { type PathLike } from 'node:fs';
+import { showError } from '../utils';
 
 export const SUPPORTED_LOCKFILE_VERSIONS = new Set([3]);
 /**
@@ -10,11 +11,11 @@ export const PACKAGE_NAME_REGEX = `(?:(?:@(?:[a-z0-9-*~][a-z0-9-*._~]*)?/[a-z0-9
 
 /**
  * Reads the given lockfile as JSON
- * @param lockfile
+ * @param lockfilePath
  * @returns
  */
-export async function readLockfile(lockfile: PathLike): Promise<any> {
-    const file = await fs.promises.open(lockfile);
+export async function readLockfile(lockfilePath: PathLike): Promise<any> {
+    const file = await fs.promises.open(lockfilePath);
 
     try {
         const contents = (await file.readFile()).toString();
@@ -132,11 +133,16 @@ async function checkAction(
     baseLockfile: string,
     workspaceLockfile: string
 ): Promise<void> {
-    assert.ok(baseLockfile,
-        'Missing path to project lockfile');
-    assert.ok(workspaceLockfile,
-        'Missing path to workspace lockfile');
-    await assert.doesNotReject(check(baseLockfile, workspaceLockfile));
+    try {
+        assert.ok(baseLockfile,
+            'Missing path to project lockfile');
+        assert.ok(workspaceLockfile,
+            'Missing path to workspace lockfile');
+        await check(baseLockfile, workspaceLockfile);
+    }
+    catch (err) {
+        showError(err);
+    }
 }
 
 program
