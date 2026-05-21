@@ -108,20 +108,25 @@ export async function check(
 ): Promise<void> {
     const files = [baseLockfile, workspaceLockfile];
     const [base, workspace] = (await Promise.all(files.map(readLockfile))).map(getPackages);
+    const missingPkgs: string[] = [];
 
     for (const [name, workspacePkgVers] of workspace) {
         const basePkgVers = base.get(name);
 
-        assert.ok(basePkgVers != null,
-            `Package missing from base lockfile: ${name}`);
-        
-        const missingVers = [
-            ...workspacePkgVers.difference(basePkgVers)
-        ];
+        if (basePkgVers == null) {
+            missingPkgs.push(name);
+        }
+        else if (!workspacePkgVers.isSubsetOf(basePkgVers)) {
+            const missingVers = [
+                ...workspacePkgVers.difference(basePkgVers)
+            ];
 
-        assert.ok(missingVers.length < 1,
-            `Version mismatch: ${name}@${missingVers.join('||')}`);
+            missingPkgs.push(`${name}@${missingVers.join('||')}`);
+        }
     }
+
+    assert.ok(missingPkgs.length < 1,
+        `Packages missing from project root lockfile:\n- ${missingPkgs.join('\n- ')}`);
 }
 
 /**
