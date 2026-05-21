@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs, { type PathLike } from 'node:fs';
 import { showError } from '../utils';
 
-export const SUPPORTED_LOCKFILE_VERSIONS = new Set([3]);
+export const SUPPORTED_LOCKFILE_VERSIONS = new Set([1, 2, 3]);
 /**
  * @see {@link https://github.com/SchemaStore/schemastore/blob/0c09eaee518187f3ed6885467cccb67026835394/src/schemas/json/package.json#L381 package.json schema}
  */
@@ -42,13 +42,19 @@ export function getPackages(lockfile: unknown): Map<string, Set<string>> {
         'Invalid lockfile');
     assert.ok(SUPPORTED_LOCKFILE_VERSIONS.has(lockfile.lockfileVersion),
         `Unsupported lockfile version: ${lockfile['lockfileVersion']}`);
-    assert.ok('packages' in lockfile, 'Invalid lockfile');
-    assert.ok(typeof lockfile.packages === 'object', 'Invalid lockfile');
-    assert.ok(lockfile.packages !== null, 'Invalid lockfile');
-    assert.ok(!Array.isArray(lockfile.packages), 'Invalid lockfile');
+
+    const packageKey = 'packages' in lockfile ? 'packages' : 'dependencies';
+
+    assert.ok(packageKey in lockfile, 'Invalid lockfile');
+
+    const packages = (lockfile as typeof lockfile & Record<typeof packageKey, unknown>)[packageKey];
+
+    assert.ok(typeof packages === 'object', 'Invalid lockfile');
+    assert.ok(packages !== null, 'Invalid lockfile');
+    assert.ok(!Array.isArray(packages), 'Invalid lockfile');
 
     // Validating packages
-    const pkgsIn = lockfile.packages as Record<any, unknown>;
+    const pkgsIn = packages as Record<any, unknown>;
     const pkgsOut = new Map<string, Set<string>>();
 
     for (const pkgPath in pkgsIn) {
