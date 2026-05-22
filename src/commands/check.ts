@@ -1,13 +1,51 @@
 import { program } from 'commander';
 import assert from 'node:assert';
 import fs, { type PathLike } from 'node:fs';
-import { showError } from '../utils';
+import path from 'node:path';
+import { pathLikeToString, showError } from '../utils';
 
 export const SUPPORTED_LOCKFILE_VERSIONS = new Set([1, 2, 3]);
+// Ordered from highest to lowest precedence
+export const SUPPORTED_LOCKFILE_NAMES = [
+    'npm-shrinkwrap.json',
+    'package-lock.json'
+];
 /**
  * @see {@link https://github.com/SchemaStore/schemastore/blob/0c09eaee518187f3ed6885467cccb67026835394/src/schemas/json/package.json#L381 package.json schema}
  */
 export const PACKAGE_NAME_REGEX = `(?:(?:@(?:[a-z0-9-*~][a-z0-9-*._~]*)?/[a-z0-9-._~])|[a-z0-9-~])[a-z0-9-._~]*`;
+
+async function readLockfileFromFile(
+    lockfilePath: PathLike
+): Promise<Buffer<ArrayBuffer>> {
+    const file = await fs.promises.open(lockfilePath);
+
+    try {
+        return await file.readFile();
+    }
+    finally {
+        await file.close();
+    }
+}
+
+async function readLockfileFromDir(
+    lockfileDir: PathLike
+): Promise<Buffer<ArrayBuffer> | undefined> {
+    const lockfilePath = pathLikeToString(lockfileDir);
+
+    // Trying to read folder
+    for (const lockfileName of SUPPORTED_LOCKFILE_NAMES) {
+        try {
+            return await readLockfileFromFile(path.join(lockfilePath, lockfileName));
+        }
+        catch (err) {
+            // If the file doesn't exist, keep looping
+            if (!(err instanceof Error) || !('code' in err) || err.code !== 'ENOENT') {
+                throw err;
+            }
+        }
+    }
+}
 
 /**
  * Reads the given lockfile as JSON
@@ -15,16 +53,10 @@ export const PACKAGE_NAME_REGEX = `(?:(?:@(?:[a-z0-9-*~][a-z0-9-*._~]*)?/[a-z0-9
  * @returns
  */
 export async function readLockfile(lockfilePath: PathLike): Promise<any> {
-    const file = await fs.promises.open(lockfilePath);
+    const contents = await readLockfileFromDir(lockfilePath)
+        ?? await readLockfileFromFile(lockfilePath);
 
-    try {
-        const contents = (await file.readFile()).toString();
-
-        return JSON.parse(contents);
-    }
-    finally {
-        file.close();
-    }
+    return JSON.parse(contents.toString());
 }
 
 /**
