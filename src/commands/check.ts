@@ -2,7 +2,15 @@ import { program } from 'commander';
 import assert from 'node:assert';
 import fs, { type PathLike } from 'node:fs';
 import path from 'node:path';
-import { pathLikeToString, showError } from '../utils';
+import { PATH_ROOT, pathLikeToString, showError } from '../utils';
+
+export interface Lockfile {
+    packages: Map<string, Package>,
+}
+
+export interface Package {
+    versions: Set<string>;
+}
 
 export const SUPPORTED_LOCKFILE_VERSIONS = new Set([1, 2, 3]);
 // Ordered from highest to lowest precedence
@@ -48,23 +56,11 @@ async function readLockfileFromDir(
 }
 
 /**
- * Reads the given lockfile as JSON
- * @param lockfilePath
- * @returns
- */
-export async function readLockfile(lockfilePath: PathLike): Promise<any> {
-    const contents = await readLockfileFromDir(lockfilePath)
-        ?? await readLockfileFromFile(lockfilePath);
-
-    return JSON.parse(contents.toString());
-}
-
-/**
- * Given a lockfile, returns data useful for comparing package versions
+ * Given a lockfile, validates and parses it
  * @param lockfile The lockfile, as JSON
- * @returns
+ * @returns The parsed lockfile
  */
-export function getPackages(lockfile: unknown): Map<string, Set<string>> {
+export function parseLockfile(lockfile: unknown): Lockfile {
     // Validating lockfile properties
     assert.ok(typeof lockfile === 'object', 'Invalid lockfile');
     assert.ok(lockfile !== null, 'Invalid lockfile');
@@ -85,11 +81,11 @@ export function getPackages(lockfile: unknown): Map<string, Set<string>> {
     assert.ok(packages !== null, 'Invalid lockfile');
     assert.ok(!Array.isArray(packages), 'Invalid lockfile');
 
-    // Validating packages
     const pkgsIn = packages as Record<any, unknown>;
-    const pkgsOut = new Map<string, Set<string>>();
+    const pkgsOut = new Map<string, Package>();
 
     for (const pkgPath in pkgsIn) {
+        // Validating package
         const pkg = pkgsIn[pkgPath];
 
         if (pkgPath === '') {
@@ -118,45 +114,66 @@ export function getPackages(lockfile: unknown): Map<string, Set<string>> {
 
         assert.ok(typeof pkg.version === 'string', 'Invalid lockfile');
 
-        // Collecting packages
+        // Collecting package versions
         const pkgNameMatches = new RegExp(`(?<name>${PACKAGE_NAME_REGEX})$`).exec(pkgPath);
         const pkgName = pkgNameMatches?.groups?.name;
 
         assert.ok(pkgName != null && pkgName.length > 0, 'Invalid lockfile');
 
         if (pkgsOut.has(pkgName)) {
-            pkgsOut.get(pkgName)!.add(pkg.version);
+            pkgsOut.get(pkgName)!.versions.add(pkg.version);
         }
         else {
-            pkgsOut.set(pkgName, new Set([pkg.version]));
+            pkgsOut.set(pkgName, { versions: new Set([pkg.version]) });
         }
     }
 
-    return pkgsOut;
+    return {
+        packages: pkgsOut
+    };
+}
+
+/**
+ * Reads and parses the given lockfile
+ * @param lockfilePath Path to the lockfile or its containing directory
+ * @returns
+ */
+export async function readLockfile(
+    lockfilePath: PathLike
+): Promise<Lockfile> {
+    const contents = await readLockfileFromDir(lockfilePath)
+        ?? await readLockfileFromFile(lockfilePath);
+
+    return parseLockfile(JSON.parse(contents.toString()));
 }
 
 /**
  * Checks workspace lockfile sync
- * @param baseLockfile Path to the project root lockfile
- * @param workspaceLockfile Path to the workspace lockfile
+ * @param baseLockfilePath Path to the project root lockfile
+ * @param workspaceLockfilePath Path to the workspace lockfile
  */
 export async function check(
-    baseLockfile: PathLike,
-    workspaceLockfile: PathLike
+    baseLockfilePath: PathLike,
+    workspaceLockfilePath: PathLike
 ): Promise<void> {
-    const files = [baseLockfile, workspaceLockfile];
-    const [base, workspace] = (await Promise.all(files.map(readLockfile))).map(getPackages);
-    const missingPkgs: string[] = [];
+    assert.ok(baseLockfilePath,
+        'Missing path to project root directory or lockfile');
+    assert.ok(workspaceLockfilePath,
+        'Missing path to workspace directory or lockfile');
 
-    for (const [name, workspacePkgVers] of workspace) {
-        const basePkgVers = base.get(name);
+    const files = [baseLockfilePath, workspaceLockfilePath];
+    const [base, workspace] = await Promise.all(files.map(readLockfile));
+    const missingPkgs = new Array<string>();
 
-        if (basePkgVers == null) {
+    for (const [name, workspacePkg] of workspace.packages) {
+        const basePkg = base.packages.get(name);
+
+        if (basePkg == null) {
             missingPkgs.push(name);
         }
-        else if (!workspacePkgVers.isSubsetOf(basePkgVers)) {
+        else if (!workspacePkg.versions.isSubsetOf(basePkg.versions)) {
             const missingVers = [
-                ...workspacePkgVers.difference(basePkgVers)
+                ...workspacePkg.versions.difference(basePkg.versions)
             ];
 
             missingPkgs.push(`${name}@${missingVers.join('||')}`);
@@ -169,19 +186,18 @@ export async function check(
 
 /**
  * CLI command to check workspace lockfile sync
- * @param baseLockfile 
- * @param workspaceLockfile 
+ * @param baseLockfilePath 
+ * @param workspaceLockfilePath 
  */
 async function checkAction(
-    baseLockfile: string,
-    workspaceLockfile: string
+    baseLockfilePath: string,
+    workspaceLockfilePath: string
 ): Promise<void> {
+    baseLockfilePath = path.resolve(PATH_ROOT, baseLockfilePath);
+    workspaceLockfilePath = path.resolve(PATH_ROOT, workspaceLockfilePath);
+
     try {
-        assert.ok(baseLockfile,
-            'Missing path to project lockfile');
-        assert.ok(workspaceLockfile,
-            'Missing path to workspace lockfile');
-        await check(baseLockfile, workspaceLockfile);
+        await check(baseLockfilePath, workspaceLockfilePath);
     }
     catch (err) {
         showError(err);
@@ -191,6 +207,6 @@ async function checkAction(
 program
     .command('check')
     .description('Check workspace lockfile sync')
-    .argument('<base_lockfile>', 'Path to the project root lockfile')
-    .argument('<workspace_lockfile>', 'Path to the workspace lockfile')
+    .argument('<base_lockfile>', 'Path to the project root directory or lockfile')
+    .argument('<workspace_lockfile>', 'Path to the workspace directory or lockfile')
     .action(checkAction);

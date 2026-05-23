@@ -1,5 +1,7 @@
-import { type PathLike } from 'fs';
-import { fileURLToPath } from 'url';
+import { type PathLike } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+export const PATH_ROOT = process.cwd();
 
 export function showError(err: unknown): void {
     if (err instanceof Error) {
