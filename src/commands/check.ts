@@ -134,17 +134,17 @@ export function parseLockfile(lockfile: unknown): Lockfile {
 }
 
 /**
- * Reads and parses the given lockfile
+ * Reads the given lockfile
  * @param lockfilePath Path to the lockfile or its containing directory
  * @returns
  */
 export async function readLockfile(
     lockfilePath: PathLike
-): Promise<Lockfile> {
+): Promise<any> {
     const contents = await readLockfileFromDir(lockfilePath)
         ?? await readLockfileFromFile(lockfilePath);
 
-    return parseLockfile(JSON.parse(contents.toString()));
+    return JSON.parse(contents.toString());
 }
 
 /**
@@ -153,20 +153,13 @@ export async function readLockfile(
  * @param workspaceLockfilePath Path to the workspace lockfile
  */
 export async function check(
-    baseLockfilePath: PathLike,
-    workspaceLockfilePath: PathLike
+    baseLockfile: Lockfile,
+    workspaceLockfile: Lockfile
 ): Promise<void> {
-    assert.ok(baseLockfilePath,
-        'Missing path to project root directory or lockfile');
-    assert.ok(workspaceLockfilePath,
-        'Missing path to workspace directory or lockfile');
-
-    const files = [baseLockfilePath, workspaceLockfilePath];
-    const [base, workspace] = await Promise.all(files.map(readLockfile));
     const missingPkgs = new Array<string>();
 
-    for (const [name, workspacePkg] of workspace.packages) {
-        const basePkg = base.packages.get(name);
+    for (const [name, workspacePkg] of workspaceLockfile.packages) {
+        const basePkg = baseLockfile.packages.get(name);
 
         if (basePkg == null) {
             missingPkgs.push(name);
@@ -193,11 +186,18 @@ async function checkAction(
     baseLockfilePath: string,
     workspaceLockfilePath: string
 ): Promise<void> {
-    baseLockfilePath = path.resolve(PATH_ROOT, baseLockfilePath);
-    workspaceLockfilePath = path.resolve(PATH_ROOT, workspaceLockfilePath);
+    assert.ok(baseLockfilePath,
+        'Missing path to project root directory or lockfile');
+    assert.ok(workspaceLockfilePath,
+        'Missing path to workspace directory or lockfile');
+
+    const [base, workspace] = (await Promise.all([
+        readLockfile(path.resolve(PATH_ROOT, baseLockfilePath)),
+        readLockfile(path.resolve(PATH_ROOT, workspaceLockfilePath))
+    ])).map(parseLockfile);
 
     try {
-        await check(baseLockfilePath, workspaceLockfilePath);
+        await check(base, workspace);
     }
     catch (err) {
         showError(err);
