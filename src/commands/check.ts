@@ -5,7 +5,9 @@ import path from 'node:path';
 import { PATH_ROOT, pathLikeToString, showError } from '../utils';
 
 export interface Lockfile {
+    path: string,
     packages: Map<string, Package>,
+    workspaces: Set<string>
 }
 
 export interface Package {
@@ -23,28 +25,42 @@ export const SUPPORTED_LOCKFILE_NAMES = [
  */
 export const PACKAGE_NAME_REGEX = `(?:(?:@(?:[a-z0-9-*~][a-z0-9-*._~]*)?/[a-z0-9-._~])|[a-z0-9-~])[a-z0-9-._~]*`;
 
-async function readLockfileFromFile(
+/**
+ * Given a path to a lockfile, returns the lockfile as JSON
+ * @param lockfilePath The lockfile path
+ * @returns The lockfile, in JSON
+ */
+export async function readLockfileFromFile(
     lockfilePath: PathLike
-): Promise<Buffer<ArrayBuffer>> {
+): Promise<any> {
     const file = await fs.promises.open(lockfilePath);
 
     try {
-        return await file.readFile();
+        return JSON.parse((await file.readFile()).toString());
     }
     finally {
         await file.close();
     }
 }
 
-async function readLockfileFromDir(
+/**
+ * Given a path to a workspace directory, validates and parses the lockfile
+ * @param lockfilePath The directory path
+ * @returns If successful, the parsed lockfile and its resolved path.
+ * If the directory exists, but no lockfile is found, `undefined`.
+ */
+export async function readLockfileFromDir(
     lockfileDir: PathLike
-): Promise<Buffer<ArrayBuffer> | undefined> {
+): Promise<[any, string] | undefined> {
     const lockfilePath = pathLikeToString(lockfileDir);
 
     // Trying to read folder
     for (const lockfileName of SUPPORTED_LOCKFILE_NAMES) {
         try {
-            return await readLockfileFromFile(path.join(lockfilePath, lockfileName));
+            const tempLockfilePath = path.join(lockfilePath, lockfileName);
+            const lockfile = await readLockfileFromFile(tempLockfilePath);
+
+            return [lockfile, tempLockfilePath];
         }
         catch (err) {
             // If the file doesn't exist, keep looping
@@ -55,22 +71,10 @@ async function readLockfileFromDir(
     }
 }
 
-/**
- * Given a lockfile, validates and parses it
- * @param lockfile The lockfile, as JSON
- * @returns The parsed lockfile
- */
-export function parseLockfile(lockfile: unknown): Lockfile {
-    // Validating lockfile properties
-    assert.ok(typeof lockfile === 'object', 'Invalid lockfile');
-    assert.ok(lockfile !== null, 'Invalid lockfile');
-    assert.ok(!Array.isArray(lockfile), 'Invalid lockfile');
-    assert.ok('lockfileVersion' in lockfile, 'Invalid lockfile');
-    assert.ok(typeof lockfile['lockfileVersion'] === 'number',
-        'Invalid lockfile');
-    assert.ok(SUPPORTED_LOCKFILE_VERSIONS.has(lockfile.lockfileVersion),
-        `Unsupported lockfile version: ${lockfile['lockfileVersion']}`);
-
+function parseLockfilePackages(
+    lockfile: Record<string, unknown>,
+    lockfilePath: string
+): [Map<string, Package>, Set<string>] {
     const packageKey = 'packages' in lockfile ? 'packages' : 'dependencies';
 
     assert.ok(packageKey in lockfile, 'Invalid lockfile');
@@ -83,6 +87,7 @@ export function parseLockfile(lockfile: unknown): Lockfile {
 
     const pkgsIn = packages as Record<any, unknown>;
     const pkgsOut = new Map<string, Package>();
+    let workspaces = new Set<string>();
 
     for (const pkgPath in pkgsIn) {
         // Validating package
@@ -98,11 +103,6 @@ export function parseLockfile(lockfile: unknown): Lockfile {
         assert.ok(pkg !== null, 'Invalid lockfile');
         assert.ok(!Array.isArray(pkg), 'Invalid lockfile');
 
-        if ('name' in pkg) {
-            // Workspace
-            assert.ok(typeof pkg.name === 'string', 'Invalid lockfile');
-            continue;
-        }
         if ('link' in pkg && pkg.link === true) {
             // Local source
             continue;
@@ -115,12 +115,27 @@ export function parseLockfile(lockfile: unknown): Lockfile {
         assert.ok(typeof pkg.version === 'string', 'Invalid lockfile');
 
         // Collecting package versions
-        const pkgNameMatches = new RegExp(`(?<name>${PACKAGE_NAME_REGEX})$`).exec(pkgPath);
+        let tmpName = pkgPath;
+
+        if ('name' in pkg) {
+            // Workspace
+            assert.ok(typeof pkg.name === 'string', 'Invalid lockfile');
+
+            workspaces.add(path.resolve(path.dirname(lockfilePath), pkgPath));
+
+            tmpName = pkg.name;
+        }
+
+        const pkgNameMatches = new RegExp(`(?<name>${PACKAGE_NAME_REGEX})$`).exec(tmpName);
         const pkgName = pkgNameMatches?.groups?.name;
 
-        assert.ok(pkgName != null && pkgName.length > 0, 'Invalid lockfile');
+        assert.ok(pkgName != null, 'Invalid lockfile');
 
-        if (pkgsOut.has(pkgName)) {
+        if ('name' in pkg) {
+            // TODO Check workspace versions
+            continue;
+        }
+        else if (pkgsOut.has(pkgName)) {
             pkgsOut.get(pkgName)!.versions.add(pkg.version);
         }
         else {
@@ -128,8 +143,36 @@ export function parseLockfile(lockfile: unknown): Lockfile {
         }
     }
 
+    return [pkgsOut, workspaces];
+}
+
+/**
+ * Given a lockfile, validates and parses it
+ * @param lockfile The lockfile, as JSON
+ * @param lockfilePath The absolute path to the lockfile
+ * @returns The parsed lockfile
+ */
+export function parseLockfile(
+    lockfile: unknown,
+    lockfilePath: string
+): Lockfile {
+    // Validating lockfile properties
+    assert.ok(typeof lockfile === 'object', 'Invalid lockfile');
+    assert.ok(lockfile !== null, 'Invalid lockfile');
+    assert.ok(!Array.isArray(lockfile), 'Invalid lockfile');
+    assert.ok('lockfileVersion' in lockfile, 'Invalid lockfile');
+    assert.ok(typeof lockfile.lockfileVersion === 'number',
+        'Invalid lockfile');
+    assert.ok(SUPPORTED_LOCKFILE_VERSIONS.has(lockfile.lockfileVersion),
+        `Unsupported lockfile version: ${lockfile.lockfileVersion}`);
+
+    // Combining workspace sets
+    const [pkgs, workspaces] = parseLockfilePackages(lockfile, lockfilePath);
+
     return {
-        packages: pkgsOut
+        path: lockfilePath,
+        packages: pkgs,
+        workspaces
     };
 }
 
@@ -140,11 +183,11 @@ export function parseLockfile(lockfile: unknown): Lockfile {
  */
 export async function readLockfile(
     lockfilePath: PathLike
-): Promise<any> {
-    const contents = await readLockfileFromDir(lockfilePath)
-        ?? await readLockfileFromFile(lockfilePath);
-
-    return JSON.parse(contents.toString());
+): Promise<[any, string]> {
+    return await readLockfileFromDir(lockfilePath) ?? [
+        await readLockfileFromFile(lockfilePath),
+        pathLikeToString(lockfilePath)
+    ];
 }
 
 /**
@@ -152,10 +195,10 @@ export async function readLockfile(
  * @param baseLockfilePath Path to the project root lockfile
  * @param workspaceLockfilePath Path to the workspace lockfile
  */
-export async function check(
+export function check(
     baseLockfile: Lockfile,
     workspaceLockfile: Lockfile
-): Promise<void> {
+): void {
     const missingPkgs = new Array<string>();
 
     for (const [name, workspacePkg] of workspaceLockfile.packages) {
@@ -194,10 +237,10 @@ async function checkAction(
     const [base, workspace] = (await Promise.all([
         readLockfile(path.resolve(PATH_ROOT, baseLockfilePath)),
         readLockfile(path.resolve(PATH_ROOT, workspaceLockfilePath))
-    ])).map(parseLockfile);
+    ])).map(([l, w]) => parseLockfile(l, w));
 
     try {
-        await check(base, workspace);
+        check(base, workspace);
     }
     catch (err) {
         showError(err);
