@@ -1,29 +1,53 @@
 import { program } from 'commander';
 import assert from 'node:assert';
 import path from 'node:path';
+import { getOrInsert } from '../shims';
 import { PATH_ROOT, pathLikeToString, showError } from '../utils';
-import { check, Lockfile, parseLockfile, readLockfile, readLockfileFromDir } from './check';
+import { check, Lockfile } from './check';
 
 export async function checkAll(
     baseLockfile: Lockfile
 ): Promise<void> {
-    const workspaces = new Set(baseLockfile.workspaces);
+    const workspaces = new Map(baseLockfile.workspaces);
+    const errorMsgs = new Array<string>();
 
-    for (const workspace of workspaces) {
-        const rawWorkspaceLockFile = await readLockfileFromDir(workspace);
+    for (const workspace of workspaces.keys()) {
+        const rawWorkspaceLockFile = await Lockfile.readFromDir(workspace);
 
-        assert.ok(rawWorkspaceLockFile != null,
+        assert.ok(rawWorkspaceLockFile !== undefined,
             `Couldn't find lockfile in workspace: ${workspace}`);
 
-        const workspaceLockfile = parseLockfile(...rawWorkspaceLockFile);
+        Lockfile.validate(rawWorkspaceLockFile[0]);
 
-        // Performing set union without disrupting the iterator
-        for (const w of workspaceLockfile.workspaces) {
-            workspaces.add(w);
+        const workspaceLockfile = Lockfile.parse(...rawWorkspaceLockFile);
+
+        // Performing map union without disrupting the iterator
+        for (const [w, v] of workspaceLockfile.workspaces.entries()) {
+            const versions = getOrInsert(workspaces, w, { versions: new Set() });
+
+            versions.versions = versions.versions.union(v.versions);
         }
 
-        // TODO Add better error handling to display the diffs of all lockfiles
-        check(baseLockfile, workspaceLockfile);
+        try {
+            check(baseLockfile, workspaceLockfile);
+        }
+        catch (err) {
+            if (err instanceof Error) {
+                const errorMsg = err.message.replaceAll('\n', '\n  ');
+                const relWorkspace = path.relative(
+                    path.dirname(baseLockfile.path), workspace
+                ).replaceAll('\\', '/');
+
+                errorMsgs.push(`- ${relWorkspace}\n  ${errorMsg}`);
+            }
+            else {
+                throw err;
+            }
+        }
+    }
+
+    if (errorMsgs.length > 0) {
+        throw new Error(`Workspaces are out of sync:\n${errorMsgs.join('\n')}`);
     }
 }
 
@@ -34,9 +58,10 @@ export async function checkAllAction(baseLockfilePath: string): Promise<void> {
 
         baseLockfilePath = path.resolve(PATH_ROOT, pathLikeToString(baseLockfilePath));
 
-        const lockfile = parseLockfile(...await readLockfile(baseLockfilePath));
+        const [rawLockfile, lockfilePath] = await Lockfile.read(baseLockfilePath);
 
-        await checkAll(lockfile);
+        Lockfile.validate(rawLockfile);
+        await checkAll(Lockfile.parse(rawLockfile, lockfilePath));
     }
     catch (err) {
         showError(err);

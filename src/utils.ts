@@ -19,3 +19,9 @@ export function pathLikeToString(pathLike: PathLike): string {
         ? fileURLToPath(pathLike)
         : pathLike.toString()
 }
+
+/**
+ * Unsafely casts the given value to a subtype
+ * @param x The value to cast
+ */
+export function cast<T extends U, U = any>(x: U): asserts x is T {} // NOSONAR typescript:S1186
