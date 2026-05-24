@@ -47,6 +47,57 @@ export type RawLockfile = {
     packages: Record<string, RawPackage>;
 });
 
+export class LockfileBuilder {
+    private _path: string | undefined;
+    private _name: string | undefined;
+    private _version: string | undefined;
+    private _packages: Map<string, Package> | undefined;
+    private _workspaces: Map<string, Package> | undefined;
+
+    setPath(path: string): this {
+        this._path = path;
+
+        return this;
+    }
+
+    setName(name: string): this {
+        this._name = name;
+
+        return this;
+    }
+
+    setVersion(version: string): this {
+        this._version = version;
+
+        return this;
+    }
+
+    setPackages(packages: Map<string, Package>): this {
+        this._packages = packages;
+
+        return this;
+    }
+
+    setWorkspaces(workspaces: Map<string, Package>): this {
+        this._workspaces = workspaces;
+
+        return this;
+    }
+
+    create(): Lockfile {
+        assert.ok(this._name !== undefined, '');
+        assert.ok(this._version !== undefined, '');
+
+        return new Lockfile(
+            this._path ?? process.cwd(),
+            this._name,
+            this._version,
+            this._packages ?? new Map(),
+            this._workspaces ?? new Map()
+        );
+    }
+}
+
 export class Lockfile {
     static readonly SUPPORTED_VERSIONS = new Set([1, 2, 3]);
     /**
@@ -67,8 +118,7 @@ export class Lockfile {
     readonly packages: Map<string, Package>;
     readonly workspaces: Map<string, Package>;
 
-    // TODO Convert class to a builder for further extensibility
-    private constructor(
+    constructor(
         path: string,
         name: string,
         version: string,
@@ -131,8 +181,8 @@ export class Lockfile {
             `Invalid lockfile: ${packageKey} is an array`);
         cast<Record<string, unknown>>(packages);
 
+        // Validating packages
         for (const pkgPath in packages) {
-            // Validating package
             const pkg = packages[pkgPath];
 
             assert.ok(typeof pkgPath === 'string',
@@ -165,12 +215,13 @@ export class Lockfile {
             else {
                 // Dependency
                 assert.ok(typeof pkg.version === 'string',
-                    'Invalid lockfile');
+                    'Invalid lockfile: package version must be a string');
 
                 const pkgNameMatches = new RegExp(`(?<name>${Lockfile.PACKAGE_NAME_REGEX})$`).exec(pkgPath);
                 const pkgName = pkgNameMatches?.groups?.name;
 
-                assert.ok(pkgName !== undefined, 'Invalid lockfile');
+                assert.ok(pkgName !== undefined,
+                    'Invalid lockfile: package name should be a string');
             }
         }
     }
@@ -219,19 +270,19 @@ export class Lockfile {
                 const pkgName = pkgNameMatches?.groups?.name;
 
                 assert.ok(pkgName !== undefined,
-                    'Invalid lockfile: ');
+                    'Invalid lockfile: package name is missing');
 
                 getOrInsert(pkgsOut, pkgName, { versions: new Set() }).versions.add(pkg.version);
             }
         }
 
-        return new Lockfile(
-            lockfilePath,
-            lockfile.name,
-            lockfile.version,
-            pkgsOut,
-            workspaces
-        );
+        return new LockfileBuilder()
+            .setName(lockfile.name)
+            .setPath(lockfilePath)
+            .setVersion(lockfile.version)
+            .setPackages(pkgsOut)
+            .setWorkspaces(workspaces)
+            .create();
     }
 
     /**
