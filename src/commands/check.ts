@@ -141,7 +141,7 @@ export class Lockfile {
         assert.ok(!Array.isArray(lockfile),
             'Invalid lockfile: lockfile is an array');
         assert.ok('lockfileVersion' in lockfile,
-            'Invalid lockfile: missing lockfileVersion');
+            'Invalid lockfile: using an ancient lockfile, please migrate lockfileVersion to 1');
         assert.ok(typeof lockfile.lockfileVersion === 'number',
             'Invalid lockfile: lockfileVersion should be a number');
         assert.ok(Lockfile.SUPPORTED_VERSIONS.has(lockfile.lockfileVersion),
