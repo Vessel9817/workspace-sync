@@ -42,61 +42,61 @@ while also maintaining separate workspace lockfiles to keep image size minimal.
 These steps are for absolute beginners. If you already have a project
 configured with workspaces, skip to [quickstart](#quickstart)
 
-- In your project, create a `package.json` file, preferably at the project root:
+1. In your project, create a `package.json` file, preferably at the project root:
 
-  ```shell
-  cd path/to/project
-  npm init -y
-  ```
+    ```shell
+    cd path/to/project
+    npm init -y
+    ```
 
-- Add your workspaces to `package.json`:
+1. Add your workspaces to `package.json`:
 
-  ```jsonc
-  {
-    // ...
-    "workspaces": {
-      "packages": [
-        "relative/path/to/workspace1",
-        "relative/path/to/workspace2",
-        // ...
-      ]
-    },
-    // ...
-  }
-  ```
+    ```jsonc
+    {
+      // ...
+      "workspaces": {
+        "packages": [
+          "relative/path/to/workspace1",
+          "relative/path/to/workspace2",
+          // ...
+        ]
+      },
+      // ...
+    }
+    ```
 
-- Create each of your workspaces:
+1. Create each of your workspaces:
 
-  ```sh
-  mkdir -p path/to/workspace
-  cd path/to/workspace
-  npm init -y
-  # Repeat for each workspace
-  ```
+    ```sh
+    mkdir -p path/to/workspace
+    cd path/to/workspace
+    npm init -y
+    # Repeat for each workspace
+    ```
 
-- Install this tool:
+1. Install this tool:
 
-  ```shell
-  cd path/to/project
-  npm i git+https://github.com/Vessel9817/workspace-sync.git
-  ```
+    ```shell
+    cd path/to/project
+    npm i git+https://github.com/Vessel9817/workspace-sync.git
+    ```
 
 ### Quickstart
 
-- For each workspace, generate a lockfile:
+1. For each workspace, generate a lockfile:
 
-  ```shell
-  rm path/to/workspace/package-lock.json # If it already exists
-  npm i --package-lock-only --workspaces false --prefix=relative/path/to/workspace
-  ```
+    ```shell
+    rm path/to/workspace/package-lock.json # If it already exists
+    npm i --package-lock-only --workspaces false --prefix=relative/path/to/workspace
+    ```
 
-- Run this tool:
+1. Run this tool:
 
-  ```shell
-  npx tsx ./node_modules/workspace-sync/src/cli.ts check-all
-  ```
+    ```shell
+    npx tsx ./node_modules/workspace-sync/src/cli.ts check-all
+    ```
 
-- Manually resolve lockfile issues
+1. Manually resolve outlined lockfile issues
 
 ## Support
 
