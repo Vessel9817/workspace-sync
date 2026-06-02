@@ -26,14 +26,14 @@ in one of three directions:
   - Simplifies installation
   - Simplifies maintenance with one lockfile
   - No duplicate dependency installations
-  - Complicates image building
-    - All images must use the same package version
-      - Breaking changes in dependencies affect all images
-    - 
+  - All images must use the same dependency versions
+  - Bloats images with unnecessary dependencies
+    - Unnecessarily increases image size
+    - Increases build and download time relative to drive write speed
 - **Use another package manager**
 
 This tool was born out of a need to use npm and workspaces,
-while also maintaining separate workspace lockfiles.
+while also maintaining separate workspace lockfiles to keep image size minimal.
 
 ## Usage
 
