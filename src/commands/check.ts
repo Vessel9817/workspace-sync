@@ -183,7 +183,7 @@ export class Lockfile {
 
         // Validating packages
         for (const pkgPath in packages) {
-            const pkg = packages[pkgPath];
+            const pkg: unknown = packages[pkgPath];
 
             assert.ok(typeof pkgPath === 'string',
                 `Invalid lockfile: ${packageKey} key should be a string`);
