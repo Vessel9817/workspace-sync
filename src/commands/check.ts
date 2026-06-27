@@ -108,9 +108,9 @@ export class Lockfile {
         'package-lock.json'
     ];
     /**
-     * @see {@link https://github.com/SchemaStore/schemastore/blob/0c09eaee518187f3ed6885467cccb67026835394/src/schemas/json/package.json#L381 package.json schema}
+     * @see {@link https://github.com/SchemaStore/schemastore/issues/5230}
      */
-    static readonly PACKAGE_NAME_REGEX = `(?:(?:@(?:[a-z0-9-*~][a-z0-9-*._~]*)?/[a-z0-9-._~])|[a-z0-9-~])[a-z0-9-._~]*`;
+    static readonly PACKAGE_NAME_REGEX = `(?:@[^/]+/)[^/]+`;
 
     readonly path: string;
     readonly name: string;
