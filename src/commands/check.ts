@@ -110,7 +110,7 @@ export class Lockfile {
     /**
      * @see {@link https://github.com/SchemaStore/schemastore/issues/5230}
      */
-    static readonly PACKAGE_NAME_REGEX = `(?:@[^/]+/)[^/]+`;
+    static readonly PACKAGE_NAME_REGEX = `(?:@[^/]+/)?[^/]+`;
 
     readonly path: string;
     readonly name: string;
