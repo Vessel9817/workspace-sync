@@ -5,6 +5,5 @@ import './commands';
 program
     .name(file.name)
     .description(file.description)
-    .version(file.version);
-
-program.parse(process.argv);
+    .version(file.version)
+    .parse(process.argv);
