@@ -29,9 +29,6 @@ export type RawPackage = ({
 export type RawLockfile = {
     name: string;
     version: string;
-    //workspaces?: string[] | {
-    //    packages: string[];
-    //};
 } & ({
     lockfileVersion: 1;
     dependencies?: Record<string, RawPackage>;

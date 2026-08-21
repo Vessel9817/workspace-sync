@@ -61,7 +61,11 @@ export async function checkAllAction(baseLockfilePath: string): Promise<void> {
         const [rawLockfile, lockfilePath] = await Lockfile.read(baseLockfilePath);
 
         Lockfile.validate(rawLockfile);
-        await checkAll(Lockfile.parse(rawLockfile, lockfilePath));
+
+        // `workspaces` wasn't introduced until npm v7
+        if (rawLockfile.lockfileVersion > 1) {
+            await checkAll(Lockfile.parse(rawLockfile, lockfilePath));
+        }
     }
     catch (err) {
         showError(err);
