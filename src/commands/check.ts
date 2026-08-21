@@ -7,6 +7,7 @@ import { cast, PATH_ROOT, pathLikeToString, showError } from '../utils';
 
 export type RawPackage = ({
     link?: false;
+    resolved?: never;
     /**
      * If not present, this package is a peer/optional dependency
      * that's not installed
@@ -22,7 +23,7 @@ export type RawPackage = ({
 }) | {
     // Local source
     link: true;
-    //resolved: string;
+    resolved: string;
 };
 
 export type RawLockfile = {
@@ -138,12 +139,12 @@ export class Lockfile {
     }
 
     /**
-     * Whether a lockfile entry is a workspace rather than a dependency. Both
+     * Whether a lockfile package is a workspace rather than a dependency. Both
      * can carry a `name`, so only the path separates them. `dependencies` is
      * keyed by name rather than by path and holds no workspaces.
      * @param pkgPath The entry's key
      * @param byPath Whether the entry came from `packages`
-     * @returns Whether the entry is a workspace
+     * @returns Whether the package is a workspace
      */
     static isWorkspace(pkgPath: string, byPath: boolean): boolean {
         return byPath && !pkgPath.includes(Lockfile.DEPENDENCY_DIR);
@@ -218,6 +219,10 @@ export class Lockfile {
 
                 if (pkg.link === true) {
                     // Local source
+                    assert.ok('resolved' in pkg,
+                        'Invalid lockfile: local package path missing');
+                    assert.ok(typeof pkg.resolved === 'string',
+                        'Invalid lockfile: local package path should be a string');
                     continue;
                 }
             }
