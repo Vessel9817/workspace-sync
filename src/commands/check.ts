@@ -14,8 +14,8 @@ export type RawPackage = ({
     version?: string;
 } & {
     /**
-     * If present, this package is a workspace.
-     * Otherwise, this package is an ordinary dependency.
+     * Present on a workspace, and on a dependency installed
+     * under a name other than its own
      */
     name?: string;
     version: string;
@@ -111,6 +111,11 @@ export class Lockfile {
      * @see {@link https://github.com/SchemaStore/schemastore/issues/5230}
      */
     static readonly PACKAGE_NAME_REGEX = `(?:@[^/]+/)?[^/]+`;
+    /**
+     * Dependencies live below this, while a workspace is addressed
+     * by its path within the project
+     */
+    static readonly DEPENDENCY_DIR = 'node_modules/';
 
     readonly path: string;
     readonly name: string;
@@ -130,6 +135,18 @@ export class Lockfile {
         this.version = version;
         this.packages = packages;
         this.workspaces = workspaces;
+    }
+
+    /**
+     * Whether a lockfile entry is a workspace rather than a dependency. Both
+     * can carry a `name`, so only the path separates them. `dependencies` is
+     * keyed by name rather than by path and holds no workspaces.
+     * @param pkgPath The entry's key
+     * @param byPath Whether the entry came from `packages`
+     * @returns Whether the entry is a workspace
+     */
+    static isWorkspace(pkgPath: string, byPath: boolean): boolean {
+        return byPath && !pkgPath.includes(Lockfile.DEPENDENCY_DIR);
     }
 
     static validate(lockfile: unknown): asserts lockfile is RawLockfile {
@@ -157,6 +174,7 @@ export class Lockfile {
         assert.ok(new RegExp(`^${Lockfile.PACKAGE_NAME_REGEX}$`).test(lockfile.name),
             'Invalid lockfile: invalid name');
         const packageKey = 'packages' in lockfile ? 'packages' : 'dependencies';
+        const byPath = packageKey === 'packages';
         const oldPackageKeyAllowed = lockfile.lockfileVersion < 3;
 
         if (lockfile.lockfileVersion === 1) {
@@ -208,11 +226,10 @@ export class Lockfile {
                 continue;
             }
             if ('name' in pkg) {
-                // Workspace
                 assert.ok(typeof pkg.name === 'string',
                     'Invalid lockfile: package name should be a string');
             }
-            else {
+            if (!Lockfile.isWorkspace(pkgPath, byPath)) {
                 // Dependency
                 assert.ok(typeof pkg.version === 'string',
                     'Invalid lockfile: package version must be a string');
@@ -236,7 +253,8 @@ export class Lockfile {
         lockfile: RawLockfile,
         lockfilePath: string
     ): Lockfile {
-        const pkgsIn = 'packages' in lockfile
+        const byPath = 'packages' in lockfile;
+        const pkgsIn = byPath
             ? lockfile['packages']
             : lockfile['dependencies'];
         const pkgsOut = new Map<string, Package>();
@@ -259,15 +277,17 @@ export class Lockfile {
                 continue;
             }
 
-            if ('name' in pkg) {
+            if (Lockfile.isWorkspace(pkgPath, byPath)) {
                 // Workspace
                 const fullPkgPath = path.resolve(path.dirname(lockfilePath), pkgPath);
 
                 getOrInsert(workspaces, fullPkgPath, { versions: new Set() }).versions.add(pkg.version);
             }
             else {
+                // An alias is keyed by the name it was published under, so that
+                // it matches the same package installed elsewhere in the tree
                 const pkgNameMatches = new RegExp(`(?<name>${Lockfile.PACKAGE_NAME_REGEX})$`).exec(pkgPath);
-                const pkgName = pkgNameMatches?.groups?.name;
+                const pkgName = 'name' in pkg ? pkg.name : pkgNameMatches?.groups?.name;
 
                 assert.ok(pkgName !== undefined,
                     'Invalid lockfile: package name is missing');
