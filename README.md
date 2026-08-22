@@ -93,7 +93,11 @@ configured with workspaces, skip to [quickstart](#quickstart)
 1. Run this tool:
 
     ```shell
-    npx tsx ./node_modules/workspace-sync/src/cli.ts check-all
+    # All workspaces (not nested)
+    node --run=start -- check-all path/to/project
+
+    # A single workspace:
+    node --run=start -- check path/to/project path/to/workspace
     ```
 
 1. Manually resolve outlined lockfile issues
