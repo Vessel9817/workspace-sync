@@ -20,6 +20,12 @@ export type RawPackage = ({
      */
     name?: string;
     version: string;
+    /**
+     * The workspace patterns, present only on the root entry `""`
+     */
+    workspaces?: string[] | {
+        packages: string[];
+    };
 }) | {
     // Local source
     link: true;
@@ -109,11 +115,6 @@ export class Lockfile {
      * @see {@link https://github.com/SchemaStore/schemastore/issues/5230}
      */
     static readonly PACKAGE_NAME_REGEX = `(?:@[^/]+/)?[^/]+`;
-    /**
-     * Dependencies live below this, while a workspace is addressed
-     * by its path within the project
-     */
-    static readonly DEPENDENCY_DIR = 'node_modules/';
 
     readonly path: string;
     readonly name: string;
@@ -136,15 +137,50 @@ export class Lockfile {
     }
 
     /**
+     * Validates and extracts the workspace patterns, which only the root
+     * entry `""` declares, normalized for matching against a package key
+     * @param pkg The root package entry
+     * @returns The normalized patterns
+     */
+    static workspacePatterns(pkg: unknown): string[] {
+        if (typeof pkg !== 'object' || pkg === null
+            || !('workspaces' in pkg) || pkg.workspaces === undefined) {
+            return [];
+        }
+
+        let patterns: unknown = pkg.workspaces;
+
+        if (typeof patterns === 'object' && patterns !== null
+            && !Array.isArray(patterns)) {
+            assert.ok('packages' in patterns,
+                'Invalid lockfile: workspaces should hold packages');
+            patterns = patterns.packages;
+        }
+
+        assert.ok(Array.isArray(patterns),
+            'Invalid lockfile: workspaces should be an array');
+
+        return patterns.map((pattern) => {
+            assert.ok(typeof pattern === 'string',
+                'Invalid lockfile: workspace pattern should be a string');
+
+            // A trailing separator survives normalization, but never matches
+            return path.posix.normalize(pattern).replace(/\/$/, '');
+        });
+    }
+
+    /**
      * Whether a lockfile package is a workspace rather than a dependency. Both
-     * can carry a `name`, so only the path separates them. `dependencies` is
-     * keyed by name rather than by path and holds no workspaces.
+     * can carry a `name`, so the key is matched against the patterns the root
+     * entry declares. `dependencies` is keyed by name and declares no patterns.
      * @param pkgPath The entry's key
-     * @param byPath Whether the entry came from `packages`
+     * @param workspacePatterns The normalized workspace patterns
      * @returns Whether the package is a workspace
      */
-    static isWorkspace(pkgPath: string, byPath: boolean): boolean {
-        return byPath && !pkgPath.includes(Lockfile.DEPENDENCY_DIR);
+    static isWorkspace(pkgPath: string, workspacePatterns: string[]): boolean {
+        return workspacePatterns.some(
+            (pattern) => path.posix.matchesGlob(pkgPath, pattern)
+        );
     }
 
     static validate(lockfile: unknown): asserts lockfile is RawLockfile {
@@ -172,7 +208,6 @@ export class Lockfile {
         assert.ok(new RegExp(`^${Lockfile.PACKAGE_NAME_REGEX}$`).test(lockfile.name),
             'Invalid lockfile: invalid name');
         const packageKey = 'packages' in lockfile ? 'packages' : 'dependencies';
-        const byPath = packageKey === 'packages';
         const oldPackageKeyAllowed = lockfile.lockfileVersion < 3;
 
         if (lockfile.lockfileVersion === 1) {
@@ -197,6 +232,8 @@ export class Lockfile {
             `Invalid lockfile: ${packageKey} is an array`);
         cast<Record<string, unknown>>(packages);
 
+        const workspacePatterns = Lockfile.workspacePatterns(packages['']);
+
         // Validating packages
         for (const pkgPath in packages) {
             const pkg: unknown = packages[pkgPath];
@@ -210,6 +247,10 @@ export class Lockfile {
             assert.ok(!Array.isArray(pkg),
                 'Invalid lockfile: package is an array');
 
+            if (pkgPath === '') {
+                // Current workspace
+                continue;
+            }
             if ('link' in pkg) {
                 assert.ok(typeof pkg.link === 'boolean',
                     'Invalid lockfile: package link should be a boolean');
@@ -231,7 +272,7 @@ export class Lockfile {
                 assert.ok(typeof pkg.name === 'string',
                     'Invalid lockfile: package name should be a string');
             }
-            if (!Lockfile.isWorkspace(pkgPath, byPath)) {
+            if (!Lockfile.isWorkspace(pkgPath, workspacePatterns)) {
                 // Dependency
                 assert.ok(typeof pkg.version === 'string',
                     'Invalid lockfile: package version must be a string');
@@ -255,10 +296,10 @@ export class Lockfile {
         lockfile: RawLockfile,
         lockfilePath: string
     ): Lockfile {
-        const byPath = 'packages' in lockfile;
-        const pkgsIn = byPath
+        const pkgsIn = 'packages' in lockfile
             ? lockfile['packages']
             : lockfile['dependencies'];
+        const workspacePatterns = Lockfile.workspacePatterns(pkgsIn?.['']);
         const pkgsOut = new Map<string, Package>();
         let workspaces = new Map<string, Package>();
 
@@ -279,7 +320,7 @@ export class Lockfile {
                 continue;
             }
 
-            if (Lockfile.isWorkspace(pkgPath, byPath)) {
+            if (Lockfile.isWorkspace(pkgPath, workspacePatterns)) {
                 // Workspace
                 const fullPkgPath = path.resolve(path.dirname(lockfilePath), pkgPath);
 
