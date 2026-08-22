@@ -323,8 +323,9 @@ export class Lockfile {
                 return [lockfile, tempLockfilePath];
             }
             catch (err) {
-                // If the file doesn't exist, keep looping
-                if (!(err instanceof Error) || !('code' in err) || err.code !== 'ENOENT') {
+                // If the file doesn't exist, or the path is not a directory, keep looping
+                if (!(err instanceof Error) || !('code' in err)
+                    || (err.code !== 'ENOENT' && err.code !== 'ENOTDIR')) {
                     throw err;
                 }
             }
