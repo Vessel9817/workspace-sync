@@ -94,10 +94,10 @@ configured with workspaces, skip to [quickstart](#quickstart)
 
     ```shell
     # All workspaces (not nested)
-    node --run=start -- check-all path/to/project
+    npx workspace-sync check-all path/to/project
 
     # A single workspace:
-    node --run=start -- check path/to/project path/to/workspace
+    npx workspace-sync check path/to/project path/to/workspace
     ```
 
 1. Manually resolve outlined lockfile issues

@@ -1,3 +1,4 @@
+#!/usr/bin/env tsx
 import { program } from 'commander';
 import * as file from '../package.json';
 import './commands';
