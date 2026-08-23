@@ -22,7 +22,6 @@
         "tsc": "tsc --noEmit"
     },
     "files": [
-        "package.json",
         "tsconfig.json",
         "*.md",
         "src/",
