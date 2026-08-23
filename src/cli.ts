@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { program } from 'commander';
-import * as file from '../package.json';
+import * as file from '../package.json' with { type: 'json' };
 import './commands';
 
 program

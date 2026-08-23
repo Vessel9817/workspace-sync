@@ -23,7 +23,7 @@
         "strict": true,
         "forceConsistentCasingInFileNames": true,
         "noFallthroughCasesInSwitch": true,
-        "module": "ES2022",
+        "module": "ESNext",
         "resolveJsonModule": true,
         "noEmit": false,
         "typeRoots": ["./node_modules/@types"],
