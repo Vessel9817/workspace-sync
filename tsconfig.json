@@ -13,7 +13,7 @@
             "ES2018.AsyncIterable",
             "ES2020.Promise"
         ],
-        "inlineSourceMap": true,
+        "sourceMap": true,
         "declaration": true,
         "allowJs": true,
         "checkJs": true,

@@ -21,6 +21,14 @@
         "build": "tsc",
         "tsc": "tsc --noEmit"
     },
+    "files": [
+        "package.json",
+        "package-lock.json",
+        "tsconfig.json",
+        "*.md",
+        "src/",
+        "dist/"
+    ],
     "dependencies": {
         "commander": "^15.0.0"
     },
