@@ -78,7 +78,7 @@ configured with workspaces, skip to [quickstart](#quickstart)
 
     ```shell
     cd path/to/project
-    npm i git+https://github.com/Vessel9817/workspace-sync.git --allow-git=root
+    npm i -D --allow-git=root git+https://github.com/Vessel9817/workspace-sync.git
     ```
 
 ### Quickstart
