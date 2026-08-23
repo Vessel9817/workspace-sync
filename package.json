@@ -23,11 +23,11 @@
     },
     "files": [
         "package.json",
-        "package-lock.json",
         "tsconfig.json",
         "*.md",
         "src/",
-        "dist/"
+        "dist/",
+        ".gitignore"
     ],
     "dependencies": {
         "commander": "^15.0.0"
