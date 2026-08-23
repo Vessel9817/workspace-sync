@@ -24,7 +24,6 @@
         "forceConsistentCasingInFileNames": true,
         "noFallthroughCasesInSwitch": true,
         "module": "ESNext",
-        "resolveJsonModule": true,
         "noEmit": false,
         "typeRoots": ["./node_modules/@types"],
         "types": ["node"],
@@ -43,5 +42,8 @@
         "**/temp/",
         "**/tmp/",
         "**/dist/"
-    ]
+    ],
+    "tsc-alias": {
+        "resolveFullPaths": true
+    }
 }
