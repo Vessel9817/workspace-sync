@@ -13,6 +13,8 @@
             "ES2018.AsyncIterable",
             "ES2020.Promise"
         ],
+        "sourceMap": true,
+        "declaration": true,
         "allowJs": true,
         "checkJs": true,
         "skipLibCheck": true,
@@ -21,8 +23,7 @@
         "strict": true,
         "forceConsistentCasingInFileNames": true,
         "noFallthroughCasesInSwitch": true,
-        "module": "ES2022",
-        "resolveJsonModule": true,
+        "module": "ESNext",
         "noEmit": false,
         "typeRoots": ["./node_modules/@types"],
         "types": ["node"],
@@ -41,5 +42,8 @@
         "**/temp/",
         "**/tmp/",
         "**/dist/"
-    ]
+    ],
+    "tsc-alias": {
+        "resolveFullPaths": true
+    }
 }

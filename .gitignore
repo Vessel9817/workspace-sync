@@ -16,11 +16,12 @@
 /coverage
 
 # Deployment
+/dist
 **/build
-**/dist
 **/*.min.*
 **/*.bundle.*
 **/*.map.js
+**/*.tgz
 
 # Temporary files
 **/tmp

@@ -5,7 +5,12 @@
     "license": "MIT",
     "type": "module",
     "description": "Makes sure workspace lockfiles files are synced with the project root lockfile.",
-    "bin": "./src/cli.ts",
+    "bin": {
+        "workspace-sync": "./dist/cli.ts"
+    },
+    "exports": {
+        ".": "./dist/index.js"
+    },
     "repository": {
         "type": "git",
         "url": "git+https://github.com/Vessel9817/workspace-sync.git"
@@ -18,13 +23,22 @@
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1",
         "start": "tsx ./src/cli.ts",
+        "build": "tsc && tsc-alias",
         "tsc": "tsc --noEmit"
     },
+    "files": [
+        "tsconfig.json",
+        "*.md",
+        "src/",
+        "dist/",
+        ".gitignore"
+    ],
     "dependencies": {
         "commander": "^15.0.0"
     },
     "devDependencies": {
         "@types/node": "^26.2.0",
+        "tsc-alias": "^1.9.2",
         "tsx": "^4.23.12",
         "typescript": "^7.0.2"
     }
