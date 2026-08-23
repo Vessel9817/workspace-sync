@@ -16,8 +16,8 @@
 /coverage
 
 # Deployment
+#/dist
 **/build
-**/dist
 **/*.min.*
 **/*.bundle.*
 **/*.map.js
@@ -39,4 +39,3 @@
 .gitattributes
 /src
 /.nvmrc
-!/dist
