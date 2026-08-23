@@ -5,7 +5,12 @@
     "license": "MIT",
     "type": "module",
     "description": "Makes sure workspace lockfiles files are synced with the project root lockfile.",
-    "bin": "./dist/cli.ts",
+    "bin": {
+        "workspace-sync": "./dist/cli.ts"
+    },
+    "exports": {
+        ".": "./dist/index.js"
+    },
     "repository": {
         "type": "git",
         "url": "git+https://github.com/Vessel9817/workspace-sync.git"
