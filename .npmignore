@@ -32,3 +32,11 @@
 **/*.log
 **/*.old
 **/*.bak
+
+# npmignore
+/.github
+.gitignore
+.gitattributes
+/src
+/.nvmrc
+!/dist
