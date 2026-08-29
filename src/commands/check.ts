@@ -5,32 +5,51 @@ import path from 'node:path';
 import { getOrInsert } from '../shims';
 import { cast, PATH_ROOT, pathLikeToString, showError } from '../utils';
 
-export type RawPackage = ({
-    link?: false;
-    resolved?: never;
+interface PeerOrOptionalDependency {
+    /**
+     * Present on a workspace and on a dependency installed under an alias
+     */
+    name?: string;
     /**
      * If not present, this package is a peer/optional dependency
      * that's not installed
      */
     version?: string;
-} & {
     /**
-     * Present on a workspace, and on a dependency installed
-     * under a name other than its own
-     */
-    name?: string;
-    version: string;
-    /**
-     * The workspace patterns, present only on the root entry `""`
+     * The workspace glob patterns
      */
     workspaces?: string[] | {
         packages: string[];
     };
-}) | {
-    // Local source
+    link?: false;
+    resolved: never;
+}
+
+interface LocalDependency {
+    name: never;
+    version: never;
+    workspaces: never;
     link: true;
     resolved: string;
-};
+}
+
+interface Dependency {
+    /**
+     * Present on a workspace, and on a dependency installed under an alias
+     */
+    name?: string;
+    version: string;
+    /**
+     * The workspace glob patterns
+     */
+    workspaces?: string[] | {
+        packages: string[];
+    };
+    link?: false;
+    resolved: never;
+}
+
+export type RawPackage = PeerOrOptionalDependency | Dependency | LocalDependency;
 
 export type RawLockfile = {
     name: string;
