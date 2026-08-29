@@ -37,7 +37,7 @@
         "commander": "^15.0.0"
     },
     "devDependencies": {
-        "@types/node": "^26.2.0",
+        "@types/node": "^26.3.0",
         "tsc-alias": "^1.9.2",
         "tsx": "^4.23.12",
         "typescript": "^7.0.2"
