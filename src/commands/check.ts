@@ -5,32 +5,55 @@ import path from 'node:path';
 import { getOrInsert } from '../shims';
 import { cast, PATH_ROOT, pathLikeToString, showError } from '../utils';
 
-export type RawPackage = ({
-    link?: false;
+interface PeerOrOptionalDependency {
+    /**
+     * Present on a workspace and on a dependency installed under an alias
+     */
+    name?: string;
     /**
      * If not present, this package is a peer/optional dependency
      * that's not installed
      */
     version?: string;
-} & {
     /**
-     * If present, this package is a workspace.
-     * Otherwise, this package is an ordinary dependency.
+     * The workspace glob patterns
+     */
+    workspaces?: string[] | {
+        packages: string[];
+    };
+    link?: false;
+    resolved: never;
+}
+
+interface LocalDependency {
+    name: never;
+    version: never;
+    workspaces: never;
+    link: true;
+    resolved: string;
+}
+
+interface Dependency {
+    /**
+     * Present on a workspace, and on a dependency installed under an alias
      */
     name?: string;
     version: string;
-}) | {
-    // Local source
-    link: true;
-    //resolved: string;
-};
+    /**
+     * The workspace glob patterns
+     */
+    workspaces?: string[] | {
+        packages: string[];
+    };
+    link?: false;
+    resolved: never;
+}
+
+export type RawPackage = PeerOrOptionalDependency | Dependency | LocalDependency;
 
 export type RawLockfile = {
     name: string;
     version: string;
-    //workspaces?: string[] | {
-    //    packages: string[];
-    //};
 } & ({
     lockfileVersion: 1;
     dependencies?: Record<string, RawPackage>;
@@ -132,6 +155,53 @@ export class Lockfile {
         this.workspaces = workspaces;
     }
 
+    /**
+     * Validates and extracts the workspace patterns, which only the root
+     * entry `""` declares, normalized for matching against a package key
+     * @param pkg The root package entry
+     * @returns The normalized patterns
+     */
+    static workspacePatterns(pkg: unknown): string[] {
+        if (typeof pkg !== 'object' || pkg === null
+            || !('workspaces' in pkg) || pkg.workspaces === undefined) {
+            return [];
+        }
+
+        let patterns: unknown = pkg.workspaces;
+
+        if (typeof patterns === 'object' && patterns !== null
+            && !Array.isArray(patterns)) {
+            assert.ok('packages' in patterns,
+                'Invalid lockfile: workspaces should hold packages');
+            patterns = patterns.packages;
+        }
+
+        assert.ok(Array.isArray(patterns),
+            'Invalid lockfile: workspaces should be an array');
+
+        return patterns.map((pattern) => {
+            assert.ok(typeof pattern === 'string',
+                'Invalid lockfile: workspace pattern should be a string');
+
+            // A trailing separator survives normalization, but never matches
+            return path.posix.normalize(pattern).replace(/\/$/, '');
+        });
+    }
+
+    /**
+     * Whether a lockfile package is a workspace rather than a dependency. Both
+     * can carry a `name`, so the key is matched against the patterns the root
+     * entry declares. `dependencies` is keyed by name and declares no patterns.
+     * @param pkgPath The entry's key
+     * @param workspacePatterns The normalized workspace patterns
+     * @returns Whether the package is a workspace
+     */
+    static isWorkspace(pkgPath: string, workspacePatterns: string[]): boolean {
+        return workspacePatterns.some(
+            (pattern) => path.posix.matchesGlob(pkgPath, pattern)
+        );
+    }
+
     static validate(lockfile: unknown): asserts lockfile is RawLockfile {
         // Validating lockfile properties
         assert.ok(typeof lockfile === 'object',
@@ -181,6 +251,8 @@ export class Lockfile {
             `Invalid lockfile: ${packageKey} is an array`);
         cast<Record<string, unknown>>(packages);
 
+        const workspacePatterns = Lockfile.workspacePatterns(packages['']);
+
         // Validating packages
         for (const pkgPath in packages) {
             const pkg: unknown = packages[pkgPath];
@@ -194,12 +266,20 @@ export class Lockfile {
             assert.ok(!Array.isArray(pkg),
                 'Invalid lockfile: package is an array');
 
+            if (pkgPath === '') {
+                // Current workspace
+                continue;
+            }
             if ('link' in pkg) {
                 assert.ok(typeof pkg.link === 'boolean',
                     'Invalid lockfile: package link should be a boolean');
 
                 if (pkg.link === true) {
                     // Local source
+                    assert.ok('resolved' in pkg,
+                        'Invalid lockfile: local package path missing');
+                    assert.ok(typeof pkg.resolved === 'string',
+                        'Invalid lockfile: local package path should be a string');
                     continue;
                 }
             }
@@ -208,11 +288,10 @@ export class Lockfile {
                 continue;
             }
             if ('name' in pkg) {
-                // Workspace
                 assert.ok(typeof pkg.name === 'string',
                     'Invalid lockfile: package name should be a string');
             }
-            else {
+            if (!Lockfile.isWorkspace(pkgPath, workspacePatterns)) {
                 // Dependency
                 assert.ok(typeof pkg.version === 'string',
                     'Invalid lockfile: package version must be a string');
@@ -239,6 +318,7 @@ export class Lockfile {
         const pkgsIn = 'packages' in lockfile
             ? lockfile['packages']
             : lockfile['dependencies'];
+        const workspacePatterns = Lockfile.workspacePatterns(pkgsIn?.['']);
         const pkgsOut = new Map<string, Package>();
         let workspaces = new Map<string, Package>();
 
@@ -259,15 +339,17 @@ export class Lockfile {
                 continue;
             }
 
-            if ('name' in pkg) {
+            if (Lockfile.isWorkspace(pkgPath, workspacePatterns)) {
                 // Workspace
                 const fullPkgPath = path.resolve(path.dirname(lockfilePath), pkgPath);
 
                 getOrInsert(workspaces, fullPkgPath, { versions: new Set() }).versions.add(pkg.version);
             }
             else {
+                // An alias is keyed by the name it was published under, so that
+                // it matches the same package installed elsewhere in the tree
                 const pkgNameMatches = new RegExp(`(?<name>${Lockfile.PACKAGE_NAME_REGEX})$`).exec(pkgPath);
-                const pkgName = pkgNameMatches?.groups?.name;
+                const pkgName = 'name' in pkg ? pkg.name : pkgNameMatches?.groups?.name;
 
                 assert.ok(pkgName !== undefined,
                     'Invalid lockfile: package name is missing');
