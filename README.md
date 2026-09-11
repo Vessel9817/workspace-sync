@@ -3,7 +3,7 @@
 [![MIT license][license-badge]](LICENSE.md)
 [![CI][ci-badge]][ci-workflow]
 
-[license-badge]: https://raw.githubusercontent.com/Vessel9817/source-inspector/refs/heads/main/badge.svg
+[license-badge]: https://raw.githubusercontent.com/Vessel9817/workspace-sync/refs/heads/main/badge.svg
 [ci-badge]: https://github.com/Vessel9817/workspace-sync/actions/workflows/ci.yml/badge.svg
 [ci-workflow]: https://github.com/Vessel9817/workspace-sync/actions/workflows/ci.yml
 
