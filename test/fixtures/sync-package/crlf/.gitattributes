@@ -1,0 +1,2 @@
+# npm keeps the line endings of package.json, so this case needs CRLF
+*.json text eol=crlf

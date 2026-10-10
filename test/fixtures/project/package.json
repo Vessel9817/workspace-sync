@@ -1,0 +1,12 @@
+{
+  "name": "fixture-root",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/a",
+    "packages/b"
+  ],
+  "devDependencies": {
+    "ms": "^2.1.3"
+  }
+}
