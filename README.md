@@ -104,6 +104,21 @@ configured with workspaces, skip to [quickstart](#quickstart)
 
 1. Manually resolve outlined lockfile issues
 
+### After dependency updates
+
+Updates such as Dependabot's change `package.json` but not the workspace lockfile.
+`sync-package` copies `package.json` into the lockfile's root entry, as npm does:
+
+```shell
+npx workspace-sync sync-package path/to/workspace
+
+# Only report differences, e.g. in CI
+npx workspace-sync sync-package --dry-run path/to/workspace
+```
+
+If a dependency was added, or its locked version no longer satisfies its range,
+regenerate the lockfile as in [quickstart](#quickstart) step 1 instead.
+
 ## Support
 
 Node package managers:

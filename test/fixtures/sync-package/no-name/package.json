@@ -1,0 +1,10 @@
+{
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "semver": "^7.6.0"
+  },
+  "devDependencies": {
+    "ms": "^2.1.3"
+  }
+}
