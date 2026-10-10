@@ -1,0 +1,11 @@
+{
+  "name": "fixture-b",
+  "version": "2.0.0",
+  "private": true,
+  "dependencies": {
+    "tslib": "^2.6.0"
+  },
+  "devDependencies": {
+    "semver": "^7.6.0"
+  }
+}
