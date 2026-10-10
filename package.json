@@ -6,7 +6,7 @@
     "type": "module",
     "description": "Makes sure workspace lockfiles files are synced with the project root lockfile.",
     "bin": {
-        "workspace-sync": "./dist/cli.ts"
+        "workspace-sync": "./dist/cli.js"
     },
     "exports": {
         ".": "./dist/index.js"
