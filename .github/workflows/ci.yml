@@ -16,11 +16,13 @@ jobs:
         os: [ubuntu-latest]
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - name: Use Node.js
         uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
-          cache: 'npm'
+          cache: npm
           cache-dependency-path: package-lock.json
       - name: Install dependencies
         run: npm ci
@@ -36,11 +38,13 @@ jobs:
         os: [ubuntu-latest]
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - name: Use Node.js
         uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
-          cache: 'npm'
+          cache: npm
           cache-dependency-path: package-lock.json
       - name: Install dependencies
         run: npm ci
@@ -62,10 +66,31 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
-          cache: 'npm'
+          cache: npm
           cache-dependency-path: package-lock.json
       - name: Check dependency tree
         run: >-
           npm i --package-lock-only --dry-run
           && npm ci --dry-run --ignore-scripts
-  
+  # Runs test suite
+  test:
+    permissions:
+      contents: read
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Use Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Run tests
+        run: npm test

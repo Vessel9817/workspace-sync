@@ -41,7 +41,8 @@
         "**/secrets/",
         "**/temp/",
         "**/tmp/",
-        "**/dist/"
+        "**/dist/",
+        "test/"
     ],
     "tsc-alias": {
         "resolveFullPaths": true

@@ -1,0 +1,10 @@
+{
+  "name": "fixture-a",
+  "private": true,
+  "dependencies": {
+    "semver": "^7.6.0"
+  },
+  "devDependencies": {
+    "ms": "^2.1.3"
+  }
+}

@@ -21,10 +21,10 @@
         "url": "https://github.com/Vessel9817/workspace-sync/issues"
     },
     "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1",
+        "test": "tsx --test \"test/**/*.test.ts\"",
         "start": "tsx ./src/cli.ts",
         "build": "tsc && tsc-alias",
-        "tsc": "tsc --noEmit"
+        "tsc": "tsc --noEmit && tsc -p test"
     },
     "files": [
         "tsconfig.json",
