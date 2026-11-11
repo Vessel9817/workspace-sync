@@ -1,8 +1,6 @@
-import { program } from 'commander';
 import assert from 'node:assert';
 import fs, { type PathLike } from 'node:fs';
 import path from 'node:path';
-import { getOrInsert } from '../shims';
 import { cast, PATH_ROOT, pathLikeToString, showError } from '../utils';
 
 interface PeerOrOptionalDependency {
@@ -343,7 +341,7 @@ export class Lockfile {
                 // Workspace
                 const fullPkgPath = path.resolve(path.dirname(lockfilePath), pkgPath);
 
-                getOrInsert(workspaces, fullPkgPath, { versions: new Set() }).versions.add(pkg.version);
+                workspaces.getOrInsert(fullPkgPath, { versions: new Set() }).versions.add(pkg.version!);
             }
             else {
                 // An alias is keyed by the name it was published under, so that
@@ -354,7 +352,7 @@ export class Lockfile {
                 assert.ok(pkgName !== undefined,
                     'Invalid lockfile: package name is missing');
 
-                getOrInsert(pkgsOut, pkgName, { versions: new Set() }).versions.add(pkg.version);
+                pkgsOut.getOrInsert(pkgName, { versions: new Set() }).versions.add(pkg.version!);
             }
         }
 
@@ -525,7 +523,7 @@ export function check(
  * @param baseLockfilePath 
  * @param workspaceLockfilePath 
  */
-async function checkAction(
+export async function checkAction(
     baseLockfilePath: string,
     workspaceLockfilePath: string
 ): Promise<void> {
@@ -550,10 +548,3 @@ async function checkAction(
         showError(err);
     }
 }
-
-program
-    .command('check')
-    .description('Check workspace lockfile sync')
-    .argument('<base_lockfile>', 'Path to the project root directory or lockfile')
-    .argument('<workspace_lockfile>', 'Path to the workspace directory or lockfile')
-    .action(checkAction);

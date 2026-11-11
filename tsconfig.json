@@ -1,4 +1,5 @@
 {
+    "$schema": "https://www.schemastore.org/tsconfig.json",
     "compilerOptions": {
         "target": "ES2015",
         "lib": [
@@ -25,6 +26,7 @@
         "noFallthroughCasesInSwitch": true,
         "module": "ESNext",
         "noEmit": false,
+        "importHelpers": true,
         "typeRoots": ["./node_modules/@types"],
         "types": ["node"],
         "newLine": "lf",
@@ -41,7 +43,8 @@
         "**/secrets/",
         "**/temp/",
         "**/tmp/",
-        "**/dist/"
+        "**/dist/",
+        "test/"
     ],
     "tsc-alias": {
         "resolveFullPaths": true
